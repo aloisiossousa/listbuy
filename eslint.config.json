@@ -1,0 +1,5 @@
+﻿{
+   plugins: [@eslint/js],
+  languageOptions: { ecmaVersion: 2022 },
+  rules: {}
+}

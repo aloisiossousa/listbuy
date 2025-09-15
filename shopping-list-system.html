@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Compras - Supermercado</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        body.dark {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        body.dark .header {
+            background: rgba(44, 62, 80, 0.95);
+            color: white;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        body.dark .logo {
+            color: #74b9ff;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .theme-toggle {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50px;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .logout-btn {
+            background: #e74c3c;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 16px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+            transform: translateY(-1px);
+        }
+
+        /* Login Form */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-form {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        body.dark .login-form {
+            background: rgba(44, 62, 80, 0.95);
+            color: white;
+        }
+
+        .login-form h1 {
+            margin-bottom: 30px;
+            color: #667eea;
+            font-size: 28px;
+        }
+
+        body.dark .login-form h1 {
+            color: #74b9ff;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        body.dark .form-group label {
+            color: #ddd;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e6ed;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        body.dark .form-group input {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        body.dark .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Main App */
+        .app-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .app-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .main-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark .main-panel {
+            background: rgba(44, 62, 80, 0.95);
+            color: white;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+
+        body.dark .sidebar {
+            background: rgba(44, 62, 80, 0.95);
+            color: white;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        body.dark .section-title {
+            color: white;
+        }
+
+        .add-item-form {
+            display: grid;
+            grid-template-columns: 1fr 100px 100px auto;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: end;
+        }
+
+        @media (max-width: 768px) {
+            .add-item-form {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-input {
+            padding: 12px;
+            border: 2px solid #e0e6ed;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        body.dark .form-input {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .shopping-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .list-item {
+            background: rgba(248, 249, 250, 0.8);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        body.dark .list-item {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .list-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .item-details {
+            font-size: 12px;
+            color: #666;
+        }
+
+        body.dark .item-details {
+            color: #ccc;
+        }
+
+        .item-price {
+            font-weight: bold;
+            color: #27ae60;
+            margin-right: 10px;
+        }
+
+        .btn-remove {
+            background: #e74c3c;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-remove:hover {
+            background: #c0392b;
+            transform: scale(1.05);
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            background: #667eea;
+            color: white;
+            margin-left: 8px;
+        }
+
+        .summary {
+            border-top: 2px solid #e0e6ed;
+            padding-top: 20px;
+            margin-top: 20px;
+        }
+
+        body.dark .summary {
+            border-top-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+        }
+
+        .total {
+            font-size: 18px;
+            font-weight: bold;
+            color: #27ae60;
+            border-top: 2px solid #e0e6ed;
+            padding-top: 10px;
+        }
+
+        body.dark .total {
+            border-top-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .categories-filter {
+            margin-bottom: 20px;
+        }
+
+        .category-btn {
+            background: rgba(102, 126, 234, 0.1);
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 20px;
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            color: #667eea;
+        }
+
+        .category-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        body.dark .category-btn {
+            background: rgba(116, 185, 255, 0.1);
+            border-color: rgba(116, 185, 255, 0.3);
+            color: #74b9ff;
+        }
+
+        body.dark .category-btn.active {
+            background: #74b9ff;
+            color: #2c3e50;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        body.dark .empty-state {
+            color: #aaa;
+        }
+
+        .empty-state img {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="login-container">
+            <form class="login-form" onsubmit="login(event)">
+                <h1>🛒 Lista de Compras</h1>
+                <div class="form-group">
+                    <label for="username">Usuário:</label>
+                    <input type="text" id="username" placeholder="Digite seu usuário" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Senha:</label>
+                    <input type="password" id="password" placeholder="Digite sua senha" required>
+                </div>
+                <button type="submit" class="login-btn">Entrar</button>
+                <p style="margin-top: 20px; font-size: 14px; color: #666;">
+                    <strong>Credenciais para teste:</strong><br>
+                    Usuário: <strong>admin</strong><br>
+                    Senha: <strong>123456</strong><br>
+                    <br>
+                    <em>ou</em><br>
+                    <br>
+                    Usuário: <strong>usuario</strong><br>
+                    Senha: <strong>senha123</strong>
+                </p>
+            </form>
+        </div>
+
+        <!-- Main App -->
+        <div id="mainApp" style="display: none;">
+            <div class="container">
+                <header class="header">
+                    <div class="logo">🛒 Lista de Compras</div>
+                    <div class="user-info">
+                        <span id="welcomeUser">Bem-vindo!</span>
+                        <button class="theme-toggle" onclick="toggleTheme()">🌓 Tema</button>
+                        <button class="logout-btn" onclick="logout()">Sair</button>
+                    </div>
+                </header>
+
+                <div class="app-content">
+                    <div class="main-panel">
+                        <h2 class="section-title">Adicionar Produto</h2>
+                        <form class="add-item-form" onsubmit="addItem(event)">
+                            <input type="text" id="itemName" class="form-input" placeholder="Nome do produto" required>
+                            <input type="number" id="itemPrice" class="form-input" placeholder="Preço" step="0.01" required>
+                            <input type="number" id="itemQuantity" class="form-input" placeholder="Qtd" min="1" value="1" required>
+                            <select id="itemCategory" class="form-input" required>
+                                <option value="">Categoria</option>
+                                <option value="frutas">🍎 Frutas</option>
+                                <option value="verduras">🥬 Verduras</option>
+                                <option value="carnes">🥩 Carnes</option>
+                                <option value="laticínios">🥛 Laticínios</option>
+                                <option value="padaria">🍞 Padaria</option>
+                                <option value="limpeza">🧽 Limpeza</option>
+                                <option value="higiene">🧴 Higiene</option>
+                                <option value="bebidas">🥤 Bebidas</option>
+                                <option value="congelados">🧊 Congelados</option>
+                                <option value="outros">📦 Outros</option>
+                            </select>
+                            <button type="submit" class="btn-primary">+ Adicionar</button>
+                        </form>
+
+                        <div class="categories-filter">
+                            <button class="category-btn active" onclick="filterByCategory('')">Todos</button>
+                            <button class="category-btn" onclick="filterByCategory('frutas')">🍎 Frutas</button>
+                            <button class="category-btn" onclick="filterByCategory('verduras')">🥬 Verduras</button>
+                            <button class="category-btn" onclick="filterByCategory('carnes')">🥩 Carnes</button>
+                            <button class="category-btn" onclick="filterByCategory('laticínios')">🥛 Laticínios</button>
+                            <button class="category-btn" onclick="filterByCategory('padaria')">🍞 Padaria</button>
+                            <button class="category-btn" onclick="filterByCategory('limpeza')">🧽 Limpeza</button>
+                            <button class="category-btn" onclick="filterByCategory('higiene')">🧴 Higiene</button>
+                            <button class="category-btn" onclick="filterByCategory('bebidas')">🥤 Bebidas</button>
+                            <button class="category-btn" onclick="filterByCategory('congelados')">🧊 Congelados</button>
+                            <button class="category-btn" onclick="filterByCategory('outros')">📦 Outros</button>
+                        </div>
+
+                        <div id="shoppingList" class="shopping-list">
+                            <div class="empty-state">
+                                <div style="font-size: 48px; margin-bottom: 10px;">🛒</div>
+                                <h3>Sua lista está vazia</h3>
+                                <p>Adicione alguns produtos para começar suas compras!</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar">
+                        <h3 class="section-title">💰 Resumo de Gastos</h3>
+                        <div id="summary" class="summary">
+                            <div class="summary-item">
+                                <span>Total de itens:</span>
+                                <span id="totalItems">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Valor total:</span>
+                                <span id="totalValue">R$ 0,00</span>
+                            </div>
+                            <div class="summary-item total">
+                                <span>TOTAL GERAL:</span>
+                                <span id="grandTotal">R$ 0,00</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 30px;">
+                            <h4 class="section-title">📊 Por Categoria</h4>
+                            <div id="categoryBreakdown"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado da aplicação
+        let currentUser = null;
+        let shoppingList = [];
+        let currentFilter = '';
+
+        // Credenciais de exemplo
+        const users = {
+            'admin': '123456',
+            'usuario': 'senha123'
+        };
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verifica se existe tema salvo
+            const savedTheme = window.localStorage && localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark');
+            }
+
+            // Verifica se há usuário logado
+            const savedUser = window.sessionStorage && sessionStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = savedUser;
+                showMainApp();
+            }
+        });
+
+        // Autenticação
+        function login(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (users[username] && users[username] === password) {
+                currentUser = username;
+                if (window.sessionStorage) {
+                    sessionStorage.setItem('currentUser', username);
+                }
+                showMainApp();
+            } else {
+                alert('Usuário ou senha incorretos!');
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            if (window.sessionStorage) {
+                sessionStorage.removeItem('currentUser');
+            }
+            showLoginScreen();
+        }
+
+        function showMainApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('welcomeUser').textContent = `Bem-vindo, ${currentUser}!`;
+            updateDisplay();
+        }
+
+        function showLoginScreen() {
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            shoppingList = [];
+        }
+
+        // Alternância de tema
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            const isDark = document.body.classList.contains('dark');
+            if (window.localStorage) {
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            }
+        }
+
+        // Gerenciamento da lista
+        function addItem(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('itemName').value.trim();
+            const price = parseFloat(document.getElementById('itemPrice').value);
+            const quantity = parseInt(document.getElementById('itemQuantity').value);
+            const category = document.getElementById('itemCategory').value;
+
+            if (!name || !price || !quantity || !category) {
+                alert('Por favor, preencha todos os campos!');
+                return;
+            }
+
+            const newItem = {
+                id: Date.now(),
+                name: name,
+                price: price,
+                quantity: quantity,
+                category: category,
+                total: price * quantity
+            };
+
+            shoppingList.push(newItem);
+            
+            // Limpar formulário
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemPrice').value = '';
+            document.getElementById('itemQuantity').value = '1';
+            document.getElementById('itemCategory').value = '';
+
+            updateDisplay();
+        }
+
+        function removeItem(id) {
+            shoppingList = shoppingList.filter(item => item.id !== id);
+            updateDisplay();
+        }
+
+        function filterByCategory(category) {
+            currentFilter = category;
+            
+            // Atualizar botões ativos
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const listContainer = document.getElementById('shoppingList');
+            const filteredList = currentFilter 
+                ? shoppingList.filter(item => item.category === currentFilter)
+                : shoppingList;
+
+            if (filteredList.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🛒</div>
+                        <h3>${currentFilter ? 'Nenhum item nesta categoria' : 'Sua lista está vazia'}</h3>
+                        <p>${currentFilter ? 'Adicione produtos desta categoria para vê-los aqui!' : 'Adicione alguns produtos para começar suas compras!'}</p>
+                    </div>
+                `;
+            } else {
+                listContainer.innerHTML = filteredList.map(item => `
+                    <div class="list-item">
+                        <div class="item-info">
+                            <div class="item-name">${item.name}</div>
+                            <div class="item-details">
+                                ${item.quantity}x R$ ${item.price.toFixed(2)}
+                                <span class="category-badge">${getCategoryIcon(item.category)} ${item.category}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <span class="item-price">R$ ${item.total.toFixed(2)}</span>
+                            <button class="btn-remove" onclick="removeItem(${item.id})">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const totalItems = shoppingList.reduce((sum, item) => sum + item.quantity, 0);
+            const totalValue = shoppingList.reduce((sum, item) => sum + item.total, 0);
+
+            document.getElementById('totalItems').textContent = totalItems;
+            document.getElementById('totalValue').textContent = `R$ ${totalValue.toFixed(2)}`;
+            document.getElementById('grandTotal').textContent = `R$ ${totalValue.toFixed(2)}`;
+
+            // Atualizar informações do orçamento
+            if (budget > 0) {
+                const remaining = budget - totalValue;
+                document.getElementById('remainingBudget').textContent = `R$ ${remaining.toFixed(2)}`;
+                document.getElementById('remainingBudget').style.color = remaining >= 0 ? '#27ae60' : '#e74c3c';
+                
+                // Remover alertas anteriores
+                const existingAlert = document.querySelector('.budget-warning, .budget-ok');
+                if (existingAlert) {
+                    existingAlert.remove();
+                }
+                
+                // Adicionar alerta de orçamento
+                const summaryElement = document.getElementById('summary');
+                if (remaining < 0) {
+                    const warning = document.createElement('div');
+                    warning.className = 'budget-warning';
+                    warning.innerHTML = `⚠️ Atenção! Você está R$ ${Math.abs(remaining).toFixed(2)} acima do orçamento!`;
+                    summaryElement.parentNode.insertBefore(warning, summaryElement);
+                } else if (remaining <= budget * 0.1) {
+                    const warning = document.createElement('div');
+                    warning.className = 'budget-warning';
+                    warning.innerHTML = `⚠️ Cuidado! Restam apenas R$ ${remaining.toFixed(2)} do seu orçamento!`;
+                    summaryElement.parentNode.insertBefore(warning, summaryElement);
+                }
+            }
+
+            updateCategoryBreakdown();
+        }
+
+        function updateCategoryBreakdown() {
+            const categoryTotals = {};
+            shoppingList.forEach(item => {
+                if (!categoryTotals[item.category]) {
+                    categoryTotals[item.category] = 0;
+                }
+                categoryTotals[item.category] += item.total;
+            });
+
+            const breakdownHtml = Object.entries(categoryTotals)
+                .sort(([,a], [,b]) => b - a)
+                .map(([category, total]) => `
+                    <div class="summary-item">
+                        <span>${getCategoryIcon(category)} ${category}:</span>
+                        <span>R$ ${total.toFixed(2)}</span>
+                    </div>
+                `).join('');
+
+            document.getElementById('categoryBreakdown').innerHTML = breakdownHtml || '<p style="text-align: center; color: #666;">Nenhuma categoria</p>';
+        }
+
+        function getCategoryIcon(category) {
+            const icons = {
+                'frutas': '🍎',
+                'verduras': '🥬',
+                'carnes': '🥩',
+                'laticínios': '🥛',
+                'padaria': '🍞',
+                'limpeza': '🧽',
+                'higiene': '🧴',
+                'bebidas': '🥤',
+                'congelados': '🧊',
+                'outros': '📦'
+            };
+            return icons[category] || '📦';
+        }
+    </script>
+</body>
+</html>
