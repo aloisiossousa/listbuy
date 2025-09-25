@@ -326,8 +326,9 @@
         .section-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
             margin-bottom: 16px;
+            position: relative;
         }
 
         .collapse-toggle {
@@ -338,6 +339,8 @@
             padding: 8px 12px;
             cursor: pointer;
             transition: all 0.2s ease;
+            position: absolute;
+            right: 0;
         }
 
         .collapse-toggle:hover {
