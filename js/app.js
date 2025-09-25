@@ -316,9 +316,19 @@
             document.getElementById('grandTotal').textContent = currency.format(totalValue);
 
             // Orçamento
-            const remaining = Math.max(budgetValue - totalValue, 0);
+            const remainingRaw = budgetValue - totalValue;
+            const remaining = Math.abs(remainingRaw);
             const remainingEl = document.getElementById('budgetRemaining');
-            if (remainingEl) remainingEl.textContent = currency.format(remaining);
+            if (remainingEl) {
+                remainingEl.textContent = currency.format(remaining);
+                if (remainingRaw < 0) {
+                    remainingEl.style.color = '#e74c3c';
+                    remainingEl.title = `Excedeu o orçamento em ${currency.format(remaining)}`;
+                } else {
+                    remainingEl.style.color = '';
+                    remainingEl.title = '';
+                }
+            }
             const budgetEl = document.getElementById('budgetInput');
             if (budgetEl && budgetEl.value.trim() === '') {
                 budgetEl.value = budgetValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -350,11 +360,12 @@
             const bars = entries.map(([category, total]) => {
                 const percent = Math.round((total / max) * 100);
                 const label = `${getCategoryIcon(category)} ${category}`;
+                const color = getCategoryColor(category);
                 return `
                     <div class="cat-row">
                         <div class="cat-label">${label}</div>
                         <div class="cat-bar-wrap" aria-label="${label} ${currency.format(total)}">
-                            <div class="cat-bar cat-${category}" style="width:${percent}%"></div>
+                            <div class="cat-bar" style="width:${percent}%; background:${color}"></div>
                         </div>
                         <div class="cat-value">${currency.format(total)}</div>
                     </div>
@@ -362,6 +373,22 @@
             }).join('');
 
             container.innerHTML = bars;
+        }
+
+        function getCategoryColor(category) {
+            const map = {
+                'frutas': 'linear-gradient(90deg, #ff7675, #e84393)',
+                'verduras': 'linear-gradient(90deg, #55efc4, #00b894)',
+                'carnes': 'linear-gradient(90deg, #d63031, #e17055)',
+                'laticínios': 'linear-gradient(90deg, #74b9ff, #0984e3)',
+                'padaria': 'linear-gradient(90deg, #fdcb6e, #e17055)',
+                'limpeza': 'linear-gradient(90deg, #a29bfe, #6c5ce7)',
+                'higiene': 'linear-gradient(90deg, #81ecec, #00cec9)',
+                'bebidas': 'linear-gradient(90deg, #fab1a0, #e17055)',
+                'congelados': 'linear-gradient(90deg, #74b9ff, #00a8ff)',
+                'outros': 'linear-gradient(90deg, #b2bec3, #636e72)'
+            };
+            return map[category] || 'linear-gradient(90deg, #667eea, #764ba2)';
         }
 
         function getCategoryIcon(category) {
@@ -453,6 +480,15 @@
 
         window.applyBudget = applyBudget;
 
+        function clearBudget() {
+            budgetValue = 0;
+            const el = document.getElementById('budgetInput');
+            if (el) el.value = '';
+            saveBudgetToStorage();
+            updateSummary();
+        }
+        window.clearBudget = clearBudget;
+
         // Expor funções usadas em atributos inline
         window.login = login;
         window.logout = logout;
@@ -465,4 +501,169 @@
         window.toggleTheme = toggleTheme;
         window.toggleAddForm = toggleAddForm;
         window.clearList = clearList;
+        window.importListFromFile = importListFromFile;
+        window.triggerImportFile = triggerImportFile;
+
+        async function importListFromFile() {
+            const input = document.getElementById('importFile');
+            if (!input || !input.files || input.files.length === 0) {
+                alert('Selecione um arquivo PDF ou imagem.');
+                return;
+            }
+            const file = input.files[0];
+            const nameLabel = document.getElementById('importFileName');
+            if (nameLabel) nameLabel.textContent = file.name;
+            try {
+                showImportStatus('Processando arquivo...', true);
+                const text = file.type === 'application/pdf' 
+                    ? await extractTextFromPdf(file)
+                    : await extractTextFromImage(file);
+                const productNames = parseProductNames(text);
+                if (productNames.length === 0) {
+                    showImportStatus('Não foi possível detectar nomes de produtos.', false);
+                    return;
+                }
+                const uniqueNames = Array.from(new Set(productNames));
+                openImportPreview(uniqueNames);
+                showImportStatus(`Detectados ${uniqueNames.length} itens. Revise e confirme.`, false);
+            } catch (err) {
+                console.error(err);
+                alert('Falha ao importar. Tente um arquivo mais nítido ou com texto selecionável.');
+            } finally {
+                input.value = '';
+                const nameLabel2 = document.getElementById('importFileName');
+                if (nameLabel2) nameLabel2.textContent = 'Nenhum arquivo selecionado';
+            }
+        }
+
+        function triggerImportFile() {
+            const input = document.getElementById('importFile');
+            if (!input) return;
+            input.click();
+            input.onchange = function() {
+                const nameLabel = document.getElementById('importFileName');
+                if (nameLabel) {
+                    const fileName = input.files && input.files[0] ? input.files[0].name : 'Nenhum arquivo selecionado';
+                    nameLabel.textContent = fileName;
+                }
+            }
+        }
+
+        async function extractTextFromImage(file) {
+            if (!window.Tesseract) throw new Error('Tesseract não carregado');
+            const { data } = await Tesseract.recognize(file, 'por');
+            return data && data.text ? data.text : '';
+        }
+
+        async function extractTextFromPdf(file) {
+            if (!window['pdfjsLib']) throw new Error('PDF.js não carregado');
+            const arrayBuf = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+            let fullText = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                fullText += content.items.map(it => it.str).join(' ') + '\n';
+            }
+            return fullText;
+        }
+
+        function parseProductNames(rawText) {
+            if (!rawText) return [];
+            // Normalização simples
+            let text = rawText
+                .replace(/\t/g, ' ')
+                .replace(/[\r]+/g, '\n')
+                .replace(/\u00A0/g, ' ') // nbsp
+                .trim();
+            const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+
+            const names = [];
+            for (const line of lines) {
+                // Remove preços e quantidades comuns (ex: 2x, R$ 10,00, 1 UN, 500g)
+                const cleaned = line
+                    .replace(/\b\d+\s*[xX]\b/g, '')
+                    .replace(/R\$\s*\d+[\.,]?\d*/g, '')
+                    .replace(/\b\d+[\.,]?\d*\s*(kg|g|un|unid|ml|l)\b/gi, '')
+                    .replace(/\b(subtotal|total|troco|desconto|oferta|pagamento|cupom)\b/gi, '')
+                    .replace(/[:;,-]+$/g, '')
+                    .trim();
+                if (!cleaned) continue;
+                // Heurística: linha curta e sem muitos números aparenta ser um nome
+                const digits = cleaned.replace(/\D/g, '').length;
+                if (digits > 3) continue;
+                if (cleaned.length < 2) continue;
+                // Capitaliza básico
+                const name = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+                names.push(name);
+            }
+            return names;
+        }
+
+        function showImportStatus(msg, loading) {
+            const modal = document.getElementById('importPreviewModal');
+            if (modal && modal.style.display !== 'flex') {
+                modal.style.display = 'flex';
+            }
+            const el = document.getElementById('importStatus');
+            if (el) {
+                el.textContent = msg;
+                el.style.color = loading ? '#555' : '#666';
+            }
+        }
+
+        function openImportPreview(names) {
+            const modal = document.getElementById('importPreviewModal');
+            if (!modal) return;
+            const listEl = document.getElementById('importListContainer');
+            if (listEl) {
+                listEl.innerHTML = names.map((n, i) => `
+                    <label style="display:flex; align-items:center; gap:8px; padding:6px 4px;">
+                        <input type="checkbox" class="import-check" data-name="${n.replace(/"/g,'&quot;')}" checked>
+                        <input type="text" class="form-input" value="${n}" style="flex:1;">
+                    </label>
+                `).join('');
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeImportPreview() {
+            const modal = document.getElementById('importPreviewModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function confirmImportSelection() {
+            const container = document.getElementById('importListContainer');
+            if (!container) return;
+            const rows = Array.from(container.querySelectorAll('label'));
+            const selected = [];
+            rows.forEach(row => {
+                const cb = row.querySelector('.import-check');
+                const input = row.querySelector('input[type="text"]');
+                if (cb && cb.checked && input && input.value.trim()) {
+                    selected.push(input.value.trim());
+                }
+            });
+            if (selected.length === 0) {
+                alert('Nenhum item selecionado.');
+                return;
+            }
+            const now = Date.now();
+            selected.forEach((name, idx) => {
+                shoppingList.push({
+                    id: now + idx,
+                    name,
+                    price: 0,
+                    quantity: 1,
+                    category: '',
+                    total: 0
+                });
+            });
+            saveListToStorage();
+            updateDisplay();
+            closeImportPreview();
+        }
+
+        window.closeImportPreview = closeImportPreview;
+        window.confirmImportSelection = confirmImportSelection;
   
