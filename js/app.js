@@ -336,16 +336,32 @@
                 categoryTotals[item.category] += item.total;
             });
 
-            const breakdownHtml = Object.entries(categoryTotals)
-                .sort(([,a], [,b]) => b - a)
-                .map(([category, total]) => `
-                    <div class="summary-item">
-                        <span>${getCategoryIcon(category)} ${category}:</span>
-                        <span>${currency.format(total)}</span>
-                    </div>
-                `).join('');
+            const entries = Object.entries(categoryTotals).sort(([,a], [,b]) => b - a);
+            const container = document.getElementById('categoryBreakdown');
+            if (!container) return;
+            if (entries.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">Nenhuma categoria</p>';
+                return;
+            }
 
-            document.getElementById('categoryBreakdown').innerHTML = breakdownHtml || '<p style="text-align: center; color: #666;">Nenhuma categoria</p>';
+            const max = Math.max(...entries.map(([,v]) => v), 1);
+            const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            const bars = entries.map(([category, total]) => {
+                const percent = Math.round((total / max) * 100);
+                const label = `${getCategoryIcon(category)} ${category}`;
+                return `
+                    <div class="cat-row">
+                        <div class="cat-label">${label}</div>
+                        <div class="cat-bar-wrap" aria-label="${label} ${currency.format(total)}">
+                            <div class="cat-bar cat-${category}" style="width:${percent}%"></div>
+                        </div>
+                        <div class="cat-value">${currency.format(total)}</div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = bars;
         }
 
         function getCategoryIcon(category) {
