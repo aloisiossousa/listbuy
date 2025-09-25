@@ -26,9 +26,9 @@
                     <div class="main-panel">
                         <div class="section-header">
                             <h2 class="section-title" style="margin: 0;">Adicionar Produto</h2>
-                            <button class="collapse-toggle" aria-expanded="true" onclick="toggleAddForm(event)">Minimizar ▲</button>
+                            <button class="collapse-toggle" aria-expanded="false" onclick="toggleAddForm(event)">Expandir ▼</button>
                         </div>
-                        <div id="addItemContainer">
+                        <div id="addItemContainer" style="display: none;">
                         <form class="add-item-form" onsubmit="addItem(event)">
                             <input type="text" id="itemName" class="form-input" placeholder="Nome do produto" required>
                             <input type="text" id="itemPrice" class="form-input" inputmode="decimal" placeholder="0,00" required>
