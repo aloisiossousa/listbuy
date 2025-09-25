@@ -589,6 +589,39 @@
         }
         body.dark .cat-value { color: #fff; }
 
+        /* =========================
+           Responsividade adicional
+           ========================= */
+        @media (max-width: 768px) {
+            .header {
+                gap: 10px;
+            }
+            .logo { font-size: 20px; }
+            .main-panel { padding: 20px; }
+            .sidebar { padding: 20px; margin-top: 10px; }
+            .add-item-form { gap: 8px; }
+            .category-btn { font-size: 11px; padding: 6px 12px; }
+            .budget-input { width: 100%; }
+            .budget-controls { flex-direction: column; align-items: stretch; gap: 10px; }
+            .budget-actions { flex-direction: row; }
+            .btn-apply, .btn-secondary { height: 36px; line-height: 36px; padding: 0 12px; }
+            .import-controls { flex-wrap: wrap; }
+            .file-name { max-width: 100%; }
+            .cat-row { grid-template-columns: 1fr; gap: 6px; }
+            .cat-value { justify-self: end; }
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 12px; }
+            .section-title { font-size: 18px; }
+            .add-item-form { margin-bottom: 12px; }
+            .form-input { font-size: 13px; padding: 10px; }
+            .btn-primary { padding: 10px 16px; }
+            .list-item { padding: 12px; }
+            .item-price { margin-right: 6px; }
+            .cat-bar-wrap { height: 6px; }
+        }
+
         /* Import controls */
         .import-controls {
             display: flex;
