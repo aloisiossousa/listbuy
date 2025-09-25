@@ -31,7 +31,7 @@
                         <div id="addItemContainer">
                         <form class="add-item-form" onsubmit="addItem(event)">
                             <input type="text" id="itemName" class="form-input" placeholder="Nome do produto" required>
-                            <input type="number" id="itemPrice" class="form-input" placeholder="Preço" step="0.01" required>
+                            <input type="text" id="itemPrice" class="form-input" inputmode="decimal" placeholder="0,00" required>
                             <input type="number" id="itemQuantity" class="form-input" placeholder="Qtd" min="1" value="1" required>
                             <select id="itemCategory" class="form-input" required>
                                 <option value="">Categoria</option>
@@ -84,6 +84,17 @@
                                 <span>Valor total:</span>
                                 <span id="totalValue">R$ 0,00</span>
                             </div>
+                            <div class="summary-item">
+                                <span>Orçamento:</span>
+                                <span class="budget-controls">
+                                    <input id="budgetInput" class="form-input budget-input" type="text" inputmode="decimal" placeholder="0,00">
+                                    <button type="button" class="btn-apply" onclick="applyBudget()">Aplicar</button>
+                                </span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Restante:</span>
+                                <span id="budgetRemaining">R$ 0,00</span>
+                            </div>
                             <div class="summary-item total">
                                 <span>TOTAL GERAL:</span>
                                 <span id="grandTotal">R$ 0,00</span>
@@ -103,6 +114,62 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal de Edição de Produto -->
+    <div id="editModal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Editar produto</h3>
+                <button class="modal-close" onclick="closeEditModal()">✖</button>
+            </div>
+            <form id="editForm" onsubmit="saveEdit(event)">
+                <input type="hidden" id="editItemId">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <label for="editName">Nome</label>
+                        <input id="editName" class="form-input" type="text" required>
+                    </div>
+                    <div class="form-grid-3">
+                        <div class="form-row">
+                            <label for="editPrice">Preço</label>
+                            <input id="editPrice" class="form-input" inputmode="decimal" placeholder="0,00" required>
+                        </div>
+                        <div class="form-row">
+                            <label for="editQuantity">Qtd</label>
+                            <input id="editQuantity" class="form-input" type="number" min="1" required>
+                        </div>
+                        <div class="form-row">
+                            <label for="editCategory">Categoria</label>
+                            <select id="editCategory" class="form-input" required>
+                                <option value="">Categoria</option>
+                                <option value="frutas">🍎 Frutas</option>
+                                <option value="verduras">🥬 Verduras</option>
+                                <option value="carnes">🥩 Carnes</option>
+                                <option value="laticínios">🥛 Laticínios</option>
+                                <option value="padaria">🍞 Padaria</option>
+                                <option value="limpeza">🧽 Limpeza</option>
+                                <option value="higiene">🧴 Higiene</option>
+                                <option value="bebidas">🥤 Bebidas</option>
+                                <option value="congelados">🧊 Congelados</option>
+                                <option value="outros">📦 Outros</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="summary" style="margin-top: 10px;">
+                        <div class="summary-item total">
+                            <span>Total do item:</span>
+                            <span id="editComputedTotal">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script type="module" src="js/app.js"></script>
 </body>
 </html>

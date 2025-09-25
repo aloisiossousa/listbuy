@@ -4,6 +4,7 @@
         let currentUser = null;
         let shoppingList = [];
         let currentFilter = '';
+        let budgetValue = 0;
 
         // Credenciais de exemplo
         const users = {
@@ -39,6 +40,21 @@
                 // Carrega lista salva por usuário
                 loadListFromStorage();
                 showMainApp();
+            }
+
+            // Máscara de moeda para inputs de preço (adicionar/editar)
+            attachCurrencyMaskById('itemPrice');
+            attachCurrencyMaskById('editPrice');
+
+            // Orçamento
+            attachCurrencyMaskById('budgetInput');
+            loadBudgetFromStorage();
+            const budgetEl = document.getElementById('budgetInput');
+            if (budgetEl) {
+                budgetEl.addEventListener('input', function() {
+                    // somente máscara na digitação; aplicação com botão
+                    attachCurrencyMaskById('budgetInput');
+                });
             }
         });
 
@@ -105,7 +121,7 @@
             event.preventDefault();
             
             const name = document.getElementById('itemName').value.trim();
-            const rawPrice = document.getElementById('itemPrice').value.replace('.', '').replace(',', '.');
+            const rawPrice = document.getElementById('itemPrice').value.replace(/\./g, '').replace(',', '.');
             const price = parseFloat(rawPrice);
             const quantity = parseInt(document.getElementById('itemQuantity').value);
             const category = document.getElementById('itemCategory').value;
@@ -140,6 +156,104 @@
             shoppingList = shoppingList.filter(item => item.id !== id);
             saveListToStorage();
             updateDisplay();
+        }
+
+        function openEditModal(id) {
+            const itemIndex = shoppingList.findIndex(it => it.id === id);
+            if (itemIndex === -1) return;
+            const item = shoppingList[itemIndex];
+
+            const modal = document.getElementById('editModal');
+            if (!modal) return;
+            document.getElementById('editItemId').value = String(item.id);
+            document.getElementById('editName').value = item.name;
+            document.getElementById('editPrice').value = Number(item.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('editQuantity').value = String(item.quantity);
+            document.getElementById('editCategory').value = item.category;
+            modal.style.display = 'flex';
+
+            // garantir máscara ativa após abertura
+            attachCurrencyMaskById('editPrice');
+
+            // inicializa total do item
+            updateEditComputedTotal();
+            const qtyEl = document.getElementById('editQuantity');
+            const priceEl = document.getElementById('editPrice');
+            if (qtyEl && !qtyEl._totalListenerAttached) {
+                qtyEl._totalListenerAttached = true;
+                qtyEl.addEventListener('input', updateEditComputedTotal);
+            }
+            if (priceEl && !priceEl._totalListenerAttached) {
+                priceEl._totalListenerAttached = true;
+                priceEl.addEventListener('input', updateEditComputedTotal);
+            }
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('editModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function saveEdit(event) {
+            if (event) event.preventDefault();
+            const id = parseInt(document.getElementById('editItemId').value, 10);
+            const itemIndex = shoppingList.findIndex(it => it.id === id);
+            if (itemIndex === -1) return;
+
+            const name = document.getElementById('editName').value.trim();
+            const rawPrice = document.getElementById('editPrice').value.replace(/\./g, '').replace(',', '.');
+            const price = parseFloat(rawPrice);
+            const quantity = parseInt(document.getElementById('editQuantity').value, 10);
+            const category = document.getElementById('editCategory').value;
+
+            if (!name || Number.isNaN(price) || !quantity || !category) {
+                alert('Por favor, preencha todos os campos corretamente.');
+                return;
+            }
+
+            const updated = {
+                ...shoppingList[itemIndex],
+                name,
+                price,
+                quantity,
+                category,
+            };
+            updated.total = updated.price * updated.quantity;
+            shoppingList[itemIndex] = updated;
+            saveListToStorage();
+            updateDisplay();
+            closeEditModal();
+        }
+
+        // Máscara de moeda (pt-BR) para inputs de preço
+        function attachCurrencyMaskById(inputId) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            if (input._currencyMaskAttached) return; // evita múltiplos listeners
+            input._currencyMaskAttached = true;
+            input.addEventListener('input', function onInput() {
+                const onlyDigits = input.value.replace(/\D/g, '');
+                const valueNumber = onlyDigits ? Number(onlyDigits) / 100 : 0;
+                input.value = valueNumber.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            });
+            // normaliza no blur (opcional)
+            input.addEventListener('blur', function onBlur() {
+                if (!input.value) return;
+                const onlyDigits = input.value.replace(/\D/g, '');
+                const valueNumber = onlyDigits ? Number(onlyDigits) / 100 : 0;
+                input.value = valueNumber.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            });
+        }
+
+        function updateEditComputedTotal() {
+            const priceStr = (document.getElementById('editPrice')?.value || '').replace(/\./g, '').replace(',', '.');
+            const qtyStr = document.getElementById('editQuantity')?.value || '0';
+            const price = parseFloat(priceStr) || 0;
+            const qty = parseInt(qtyStr, 10) || 0;
+            const total = price * qty;
+            const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+            const target = document.getElementById('editComputedTotal');
+            if (target) target.textContent = currency.format(total);
         }
 
         function filterByCategory(evt, category) {
@@ -182,6 +296,7 @@
                         </div>
                         <div style="display: flex; align-items: center;">
                             <span class="item-price">${currency.format(item.total)}</span>
+                            <button class="btn-edit" onclick="openEditModal(${item.id})">✏️</button>
                             <button class="btn-remove" onclick="removeItem(${item.id})">🗑️</button>
                         </div>
                     </div>
@@ -200,7 +315,14 @@
             document.getElementById('totalValue').textContent = currency.format(totalValue);
             document.getElementById('grandTotal').textContent = currency.format(totalValue);
 
-            // Lógica de orçamento desativada por ausência de variável 'budget'
+            // Orçamento
+            const remaining = Math.max(budgetValue - totalValue, 0);
+            const remainingEl = document.getElementById('budgetRemaining');
+            if (remainingEl) remainingEl.textContent = currency.format(remaining);
+            const budgetEl = document.getElementById('budgetInput');
+            if (budgetEl && budgetEl.value.trim() === '') {
+                budgetEl.value = budgetValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
 
             updateCategoryBreakdown();
         }
@@ -281,11 +403,48 @@
             }
         }
 
+        function getBudgetStorageKey() {
+            return currentUser ? `budget:${currentUser}` : 'budget:anon';
+        }
+        function saveBudgetToStorage() {
+            try {
+                localStorage.setItem(getBudgetStorageKey(), String(budgetValue));
+            } catch (_) {}
+        }
+        function loadBudgetFromStorage() {
+            try {
+                const raw = localStorage.getItem(getBudgetStorageKey());
+                const parsed = raw ? parseFloat(raw) : 0;
+                budgetValue = Number.isFinite(parsed) ? parsed : 0;
+                const el = document.getElementById('budgetInput');
+                if (el) {
+                    el.value = budgetValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            } catch (_) {
+                budgetValue = 0;
+            }
+        }
+
+        function applyBudget() {
+            const el = document.getElementById('budgetInput');
+            if (!el) return;
+            const normalized = el.value.replace(/\./g, '').replace(',', '.');
+            const val = parseFloat(normalized);
+            budgetValue = Number.isFinite(val) ? val : 0;
+            saveBudgetToStorage();
+            updateSummary();
+        }
+
+        window.applyBudget = applyBudget;
+
         // Expor funções usadas em atributos inline
         window.login = login;
         window.logout = logout;
         window.addItem = addItem;
         window.removeItem = removeItem;
+        window.openEditModal = openEditModal;
+        window.closeEditModal = closeEditModal;
+        window.saveEdit = saveEdit;
         window.filterByCategory = filterByCategory;
         window.toggleTheme = toggleTheme;
         window.toggleAddForm = toggleAddForm;
