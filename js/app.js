@@ -20,9 +20,24 @@
             }
 
             // Verifica se há usuário logado
-            const savedUser = window.sessionStorage && sessionStorage.getItem('currentUser');
+            let savedUser = window.sessionStorage && sessionStorage.getItem('currentUser');
+            if (!savedUser) {
+                const remembered = localStorage.getItem('rememberedUser');
+                if (remembered) {
+                    // aplica auto-login leve apenas se lembrar usuário
+                    sessionStorage.setItem('currentUser', remembered);
+                    savedUser = remembered;
+                }
+            }
+            if (!savedUser) {
+                // Se não há sessão, envia para login
+                window.location.href = 'login.html';
+                return;
+            }
             if (savedUser) {
                 currentUser = savedUser;
+                // Carrega lista salva por usuário
+                loadListFromStorage();
                 showMainApp();
             }
         });
@@ -49,21 +64,30 @@
             if (window.sessionStorage) {
                 sessionStorage.removeItem('currentUser');
             }
-            showLoginScreen();
+            // Redireciona para a página de login separada
+            window.location.href = 'login.html';
         }
 
         function showMainApp() {
-            document.getElementById('loginScreen').style.display = 'none';
+            const loginEl = document.getElementById('loginScreen');
+            if (loginEl) {
+                loginEl.style.display = 'none';
+            }
             document.getElementById('mainApp').style.display = 'block';
             document.getElementById('welcomeUser').textContent = `Bem-vindo, ${currentUser}!`;
             updateDisplay();
         }
 
         function showLoginScreen() {
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('mainApp').style.display = 'none';
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
+            // Mantida por compatibilidade, mas index.html não possui mais login embutido
+            const loginEl = document.getElementById('loginScreen');
+            if (loginEl) loginEl.style.display = 'flex';
+            const mainEl = document.getElementById('mainApp');
+            if (mainEl) mainEl.style.display = 'none';
+            const userEl = document.getElementById('username');
+            const passEl = document.getElementById('password');
+            if (userEl) userEl.value = '';
+            if (passEl) passEl.value = '';
             shoppingList = [];
         }
 
@@ -81,11 +105,12 @@
             event.preventDefault();
             
             const name = document.getElementById('itemName').value.trim();
-            const price = parseFloat(document.getElementById('itemPrice').value);
+            const rawPrice = document.getElementById('itemPrice').value.replace('.', '').replace(',', '.');
+            const price = parseFloat(rawPrice);
             const quantity = parseInt(document.getElementById('itemQuantity').value);
             const category = document.getElementById('itemCategory').value;
 
-            if (!name || !price || !quantity || !category) {
+            if (!name || Number.isNaN(price) || !quantity || !category) {
                 alert('Por favor, preencha todos os campos!');
                 return;
             }
@@ -100,6 +125,7 @@
             };
 
             shoppingList.push(newItem);
+            saveListToStorage();
             
             // Limpar formulário
             document.getElementById('itemName').value = '';
@@ -112,17 +138,19 @@
 
         function removeItem(id) {
             shoppingList = shoppingList.filter(item => item.id !== id);
+            saveListToStorage();
             updateDisplay();
         }
 
-        function filterByCategory(category) {
+        function filterByCategory(evt, category) {
             currentFilter = category;
             
-            // Atualizar botões ativos
             document.querySelectorAll('.category-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (evt && evt.target) {
+                evt.target.classList.add('active');
+            }
             
             updateDisplay();
         }
@@ -133,6 +161,7 @@
                 ? shoppingList.filter(item => item.category === currentFilter)
                 : shoppingList;
 
+            const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
             if (filteredList.length === 0) {
                 listContainer.innerHTML = `
                     <div class="empty-state">
@@ -147,12 +176,12 @@
                         <div class="item-info">
                             <div class="item-name">${item.name}</div>
                             <div class="item-details">
-                                ${item.quantity}x R$ ${item.price.toFixed(2)}
+                                ${item.quantity}x ${currency.format(item.price)}
                                 <span class="category-badge">${getCategoryIcon(item.category)} ${item.category}</span>
                             </div>
                         </div>
                         <div style="display: flex; align-items: center;">
-                            <span class="item-price">R$ ${item.total.toFixed(2)}</span>
+                            <span class="item-price">${currency.format(item.total)}</span>
                             <button class="btn-remove" onclick="removeItem(${item.id})">🗑️</button>
                         </div>
                     </div>
@@ -165,37 +194,13 @@
         function updateSummary() {
             const totalItems = shoppingList.reduce((sum, item) => sum + item.quantity, 0);
             const totalValue = shoppingList.reduce((sum, item) => sum + item.total, 0);
+            const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
             document.getElementById('totalItems').textContent = totalItems;
-            document.getElementById('totalValue').textContent = `R$ ${totalValue.toFixed(2)}`;
-            document.getElementById('grandTotal').textContent = `R$ ${totalValue.toFixed(2)}`;
+            document.getElementById('totalValue').textContent = currency.format(totalValue);
+            document.getElementById('grandTotal').textContent = currency.format(totalValue);
 
-            // Atualizar informações do orçamento
-            if (budget > 0) {
-                const remaining = budget - totalValue;
-                document.getElementById('remainingBudget').textContent = `R$ ${remaining.toFixed(2)}`;
-                document.getElementById('remainingBudget').style.color = remaining >= 0 ? '#27ae60' : '#e74c3c';
-                
-                // Remover alertas anteriores
-                const existingAlert = document.querySelector('.budget-warning, .budget-ok');
-                if (existingAlert) {
-                    existingAlert.remove();
-                }
-                
-                // Adicionar alerta de orçamento
-                const summaryElement = document.getElementById('summary');
-                if (remaining < 0) {
-                    const warning = document.createElement('div');
-                    warning.className = 'budget-warning';
-                    warning.innerHTML = `⚠️ Atenção! Você está R$ ${Math.abs(remaining).toFixed(2)} acima do orçamento!`;
-                    summaryElement.parentNode.insertBefore(warning, summaryElement);
-                } else if (remaining <= budget * 0.1) {
-                    const warning = document.createElement('div');
-                    warning.className = 'budget-warning';
-                    warning.innerHTML = `⚠️ Cuidado! Restam apenas R$ ${remaining.toFixed(2)} do seu orçamento!`;
-                    summaryElement.parentNode.insertBefore(warning, summaryElement);
-                }
-            }
+            // Lógica de orçamento desativada por ausência de variável 'budget'
 
             updateCategoryBreakdown();
         }
@@ -214,7 +219,7 @@
                 .map(([category, total]) => `
                     <div class="summary-item">
                         <span>${getCategoryIcon(category)} ${category}:</span>
-                        <span>R$ ${total.toFixed(2)}</span>
+                        <span>${currency.format(total)}</span>
                     </div>
                 `).join('');
 
@@ -236,4 +241,53 @@
             };
             return icons[category] || '📦';
         }
+
+        function toggleAddForm(evt) {
+            const container = document.getElementById('addItemContainer');
+            const btn = evt && evt.currentTarget ? evt.currentTarget : null;
+            if (!container) return;
+            const isHidden = container.style.display === 'none';
+            container.style.display = isHidden ? 'block' : 'none';
+            if (btn) {
+                btn.setAttribute('aria-expanded', String(isHidden));
+                btn.textContent = isHidden ? 'Minimizar ▲' : 'Expandir ▼';
+            }
+        }
+
+        // Persistência em localStorage por usuário
+        function getStorageKey() {
+            return currentUser ? `shoppingList:${currentUser}` : 'shoppingList:anon';
+        }
+
+        function clearList() {
+            if (shoppingList.length === 0) return;
+            const confirmed = window.confirm('Tem certeza que deseja limpar toda a lista?');
+            if (!confirmed) return;
+            shoppingList = [];
+            saveListToStorage();
+            updateDisplay();
+        }
+        function saveListToStorage() {
+            try {
+                localStorage.setItem(getStorageKey(), JSON.stringify(shoppingList));
+            } catch (_) {}
+        }
+        function loadListFromStorage() {
+            try {
+                const raw = localStorage.getItem(getStorageKey());
+                shoppingList = raw ? JSON.parse(raw) : [];
+            } catch (_) {
+                shoppingList = [];
+            }
+        }
+
+        // Expor funções usadas em atributos inline
+        window.login = login;
+        window.logout = logout;
+        window.addItem = addItem;
+        window.removeItem = removeItem;
+        window.filterByCategory = filterByCategory;
+        window.toggleTheme = toggleTheme;
+        window.toggleAddForm = toggleAddForm;
+        window.clearList = clearList;
   

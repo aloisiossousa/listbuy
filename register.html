@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar conta - Lista de Compras</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-hero">
+                <div class="login-hero-icon">🧑‍💻</div>
+                <h1 class="login-hero-title">Criar conta</h1>
+                <p class="login-hero-subtitle">Cadastre-se para salvar suas listas neste navegador.</p>
+            </div>
+
+            <form class="login-form" onsubmit="register(event)">
+                <div class="form-group">
+                    <label for="regUsername">Usuário</label>
+                    <input type="text" id="regUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Senha</label>
+                    <div class="password-row">
+                        <input type="password" id="regPassword" required>
+                        <button type="button" class="btn-primary password-toggle" onclick="togglePassword('regPassword')">👁️</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="regConfirm">Confirmar senha</label>
+                    <div class="password-row">
+                        <input type="password" id="regConfirm" required>
+                        <button type="button" class="btn-primary password-toggle" onclick="togglePassword('regConfirm')">👁️</button>
+                    </div>
+                </div>
+                <button type="submit" class="login-btn">Criar conta</button>
+                <p class="login-hint"><a href="login.html">Voltar ao login</a></p>
+            </form>
+        </div>
+    </div>
+    <script type="module" src="js/register.js"></script>
+</body>
+</html>
+
+
