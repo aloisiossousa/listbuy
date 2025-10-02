@@ -59,7 +59,7 @@
         .theme-toggle {
             background: linear-gradient(45deg, #667eea, #764ba2);
             border: none;
-            border-radius: 50px;
+            border-radius: 10px;
             padding: 10px 20px;
             color: white;
             cursor: pointer;
@@ -77,10 +77,12 @@
             background: #e74c3c;
             border: none;
             border-radius: 10px;
-            padding: 8px 16px;
+            padding: 10px 20px;
             color: white;
             cursor: pointer;
             transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
         }
 
         .logout-btn:hover {
@@ -436,7 +438,7 @@
             font-size: 20px;
             font-weight: 600;
             margin-bottom: 20px;
-            color: #333;
+            color: #667eea;
         }
 
         body.dark .section-title {
@@ -486,6 +488,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             font-weight: 500;
+            height: 45px;
         }
 
         .btn-primary:hover {

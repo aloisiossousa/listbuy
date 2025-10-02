@@ -272,28 +272,106 @@
         }
         
         // Função de pesquisa de produtos
-        function searchItems() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-            
-            if (!searchTerm) {
-                // Se a pesquisa estiver vazia, apenas mostra todos os itens
-                filterByCategory(null, currentFilter);
-                return;
-            }
-            
-            // Filtra os itens que correspondem ao termo de pesquisa
-            const filteredItems = shoppingList.filter(item => {
-                return item.name.toLowerCase().includes(searchTerm);
-            });
-            
-            // Atualiza a exibição apenas com os itens filtrados
-            renderShoppingList(filteredItems);
-            
-            // Atualiza o contador de itens visíveis
-            document.getElementById('totalItems').textContent = filteredItems.length;
-        }
-        
-        // Adiciona evento de tecla Enter para a pesquisa
+function searchItems() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    console.log("Pesquisando por:", searchTerm);
+    
+    if (!searchTerm) {
+        // Se a pesquisa estiver vazia, apenas mostra todos os itens
+        updateDisplay();
+        return;
+    }
+    
+    // Filtra os itens que correspondem ao termo de pesquisa
+    const filteredItems = shoppingList.filter(item => {
+        return item.name.toLowerCase().includes(searchTerm) || 
+               (item.category && item.category.toLowerCase().includes(searchTerm));
+    });
+    
+    console.log("Itens filtrados:", filteredItems.length);
+    
+    // Limpa a lista atual
+    const shoppingListEl = document.getElementById('shoppingList');
+    shoppingListEl.innerHTML = '';
+    
+    // Se não houver resultados, mostra mensagem
+    if (filteredItems.length === 0) {
+        const emptyState = document.createElement('div');
+        emptyState.className = 'empty-state';
+        emptyState.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">🔍</div>
+                <h3>Nenhum resultado encontrado</h3>
+                <p>Tente buscar com outros termos</p>
+            </div>
+        `;
+        shoppingListEl.appendChild(emptyState);
+    } else {
+        // Adiciona os itens filtrados
+        filteredItems.forEach(item => {
+            const itemEl = createItemElement(item);
+            shoppingListEl.appendChild(itemEl);
+        });
+    }
+    
+    // Atualiza a interface para mostrar que estamos em modo de pesquisa
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-pressed', 'false');
+    });
+    
+    // Atualiza o contador de itens visíveis
+    document.getElementById('totalItems').textContent = filteredItems.length;
+    
+    // Adiciona um indicador visual de que estamos em modo de pesquisa
+    const searchInput = document.getElementById('searchInput');
+    searchInput.classList.add('active-search');
+    
+    // Adiciona um botão para limpar a pesquisa
+    const clearSearchBtn = document.createElement('button');
+    clearSearchBtn.id = 'clearSearchBtn';
+    clearSearchBtn.className = 'btn-clear-search';
+    clearSearchBtn.innerHTML = '❌';
+    clearSearchBtn.title = 'Limpar pesquisa';
+    clearSearchBtn.onclick = function() {
+        searchInput.value = '';
+        searchInput.classList.remove('active-search');
+        this.remove();
+        updateDisplay();
+    };
+    
+    // Adiciona o botão após o campo de pesquisa se ainda não existir
+    if (!document.getElementById('clearSearchBtn')) {
+        searchInput.parentNode.insertBefore(clearSearchBtn, searchInput.nextSibling);
+    }
+}
+
+// Função para criar elemento de item da lista
+function createItemElement(item) {
+    const itemEl = document.createElement('div');
+    itemEl.className = 'list-item';
+    const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+    itemEl.innerHTML = `
+        <div class="item-info">
+            <div class="item-name">${item.name}</div>
+            <div class="item-details">
+                ${item.quantity}x ${currency.format(item.price)}
+                <span class="category-badge">${getCategoryIcon(item.category)} ${item.category}</span>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center;">
+            <span class="item-price">${currency.format(item.total)}</span>
+            <button class="btn-edit" onclick="openEditModal(${item.id})">✏️</button>
+            <button class="btn-remove" onclick="removeItem(${item.id})">🗑️</button>
+        </div>
+    `;
+    return itemEl;
+}
+
+// Expor função de pesquisa para uso global
+window.searchItems = searchItems;
+         
+         // Adiciona evento de tecla Enter para a pesquisa
         document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('searchInput');
             if (searchInput) {
@@ -312,32 +390,64 @@
                 return;
             }
             
-            // Cria o conteúdo CSV
-            let csvContent = 'Nome,Preço,Quantidade,Categoria,Total\n';
-            
-            shoppingList.forEach(item => {
-                const total = parseFloat(item.price) * parseInt(item.quantity);
-                csvContent += `"${item.name}",${item.price},${item.quantity},${item.category},${total.toFixed(2)}\n`;
-            });
-            
-            // Cria um blob e link para download
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            
-            // Configura o link de download
-            link.setAttribute('href', url);
-            link.setAttribute('download', `lista-compras-${new Date().toISOString().slice(0,10)}.csv`);
-            link.style.display = 'none';
-            
-            // Adiciona à página, clica e remove
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            try {
+                // Cria o conteúdo CSV com BOM para suporte a caracteres especiais
+                const BOM = '\uFEFF';
+                let csvContent = BOM + 'Nome,Preço,Quantidade,Categoria,Total\n';
+                
+                shoppingList.forEach(item => {
+                    const total = item.total || (parseFloat(item.price) * parseInt(item.quantity));
+                    csvContent += `"${item.name}","R$ ${parseFloat(item.price).toFixed(2)}",${item.quantity},"${item.category}","R$ ${total.toFixed(2)}"\n`;
+                });
+                
+                // Cria um blob e link para download
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                
+                // Configura o link de download com data e hora
+                const now = new Date();
+                const dateStr = now.toISOString().slice(0,10);
+                const timeStr = now.toTimeString().slice(0,5).replace(':', '-');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `lista-compras-${dateStr}-${timeStr}.csv`);
+                link.style.display = 'none';
+                
+                // Adiciona à página, clica e remove
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Limpa a URL do objeto para liberar memória
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+                
+                // Feedback visual para o usuário
+                const exportBtn = document.getElementById('exportListBtn');
+                if (exportBtn) {
+                    const originalText = exportBtn.innerHTML;
+                    exportBtn.innerHTML = '✅ Exportado!';
+                    exportBtn.disabled = true;
+                    setTimeout(() => {
+                        exportBtn.innerHTML = originalText;
+                        exportBtn.disabled = false;
+                    }, 2000);
+                }
+                
+            } catch (error) {
+                console.error('Erro ao exportar lista:', error);
+                alert('Erro ao exportar a lista. Tente novamente.');
+            }
         }
 
         function updateDisplay() {
             const listContainer = document.getElementById('shoppingList');
+            
+            // Limpa qualquer indicador de pesquisa ativa
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) searchInput.classList.remove('active-search');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+            if (clearSearchBtn) clearSearchBtn.remove();
+            
             const filteredList = currentFilter 
                 ? shoppingList.filter(item => item.category === currentFilter)
                 : shoppingList;
@@ -352,22 +462,12 @@
                     </div>
                 `;
             } else {
-                listContainer.innerHTML = filteredList.map(item => `
-                    <div class="list-item">
-                        <div class="item-info">
-                            <div class="item-name">${item.name}</div>
-                            <div class="item-details">
-                                ${item.quantity}x ${currency.format(item.price)}
-                                <span class="category-badge">${getCategoryIcon(item.category)} ${item.category}</span>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center;">
-                            <span class="item-price">${currency.format(item.total)}</span>
-                            <button class="btn-edit" onclick="openEditModal(${item.id})">✏️</button>
-                            <button class="btn-remove" onclick="removeItem(${item.id})">🗑️</button>
-                        </div>
-                    </div>
-                `).join('');
+                // Usa a função createItemElement para criar cada item
+                listContainer.innerHTML = '';
+                filteredList.forEach(item => {
+                    const itemEl = createItemElement(item);
+                    listContainer.appendChild(itemEl);
+                });
             }
 
             updateSummary();
@@ -492,12 +592,66 @@
         }
 
         function clearList() {
-            if (shoppingList.length === 0) return;
-            const confirmed = window.confirm('Tem certeza que deseja limpar toda a lista?');
+            if (shoppingList.length === 0) {
+                alert('Sua lista já está vazia.');
+                return;
+            }
+            
+            const itemCount = shoppingList.length;
+            const confirmed = window.confirm(`Tem certeza que deseja limpar toda a lista?\n\nIsso removerá ${itemCount} ${itemCount === 1 ? 'item' : 'itens'} da sua lista de compras.`);
+            
             if (!confirmed) return;
-            shoppingList = [];
-            saveListToStorage();
-            updateDisplay();
+            
+            try {
+                // Limpa a lista
+                shoppingList = [];
+                
+                // Limpa também o filtro atual
+                currentFilter = '';
+                
+                // Remove indicadores de pesquisa ativa
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.classList.remove('active-search');
+                }
+                
+                const clearSearchBtn = document.getElementById('clearSearchBtn');
+                if (clearSearchBtn) clearSearchBtn.remove();
+                
+                // Remove filtros de categoria ativos
+                document.querySelectorAll('.category-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.setAttribute('aria-pressed', 'false');
+                });
+                
+                // Salva no localStorage
+                saveListToStorage();
+                
+                // Atualiza todas as exibições
+                updateDisplay();
+                updateSummary();
+                updateCategoryBreakdown();
+                
+                // Feedback visual para o usuário
+                const clearBtn = document.getElementById('clearListBtn');
+                if (clearBtn) {
+                    const originalText = clearBtn.innerHTML;
+                    clearBtn.innerHTML = '✅ Lista Limpa!';
+                    clearBtn.disabled = true;
+                    setTimeout(() => {
+                        clearBtn.innerHTML = originalText;
+                        clearBtn.disabled = false;
+                    }, 2000);
+                }
+                
+                // Mostra notificação de sucesso
+                console.log(`Lista limpa com sucesso! ${itemCount} ${itemCount === 1 ? 'item removido' : 'itens removidos'}.`);
+                
+            } catch (error) {
+                console.error('Erro ao limpar lista:', error);
+                alert('Erro ao limpar a lista. Tente novamente.');
+            }
         }
         function saveListToStorage() {
             try {
@@ -555,8 +709,7 @@
             updateSummary();
         }
         window.clearBudget = clearBudget;
-
-        // Expor funções usadas em atributos inline
+        
         window.login = login;
         window.logout = logout;
         window.addItem = addItem;
@@ -568,6 +721,7 @@
         window.toggleTheme = toggleTheme;
         window.toggleAddForm = toggleAddForm;
         window.clearList = clearList;
+        window.exportList = exportList;
         window.importListFromFile = importListFromFile;
         window.triggerImportFile = triggerImportFile;
 
