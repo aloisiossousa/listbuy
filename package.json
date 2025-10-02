@@ -21,7 +21,10 @@
     "eslint-config-prettier": "^10.1.8",
     "globals": "^16.4.0",
     "prettier": "^3.6.2",
-    "vite": "^7.1.5"
+    "vite": "^4.5.2"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "pdfjs-dist": "^5.4.149"
+  }
 }

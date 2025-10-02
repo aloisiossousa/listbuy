@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Compras - Supermercado</title>
+    <meta name="description" content="Aplicativo de lista de compras para supermercado - organize seus produtos por categoria e controle seu orçamento">
+    <meta name="keywords" content="lista de compras, supermercado, orçamento, compras">
+    <meta name="author" content="ListBuy">
+    <title>Lista de Compras - Supermercado | ListBuy</title>
     <link rel="stylesheet" href="css/styles.css">
+    <!-- Adiciona ícone para a página -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛒</text></svg>">
 </head>
 <body>
     <div id="app">
@@ -25,15 +30,15 @@
                 <div class="app-content">
                     <div class="main-panel">
                         <div class="section-header">
-                            <h2 class="section-title" style="margin: 0;">Adicionar Produto</h2>
-                            <button class="collapse-toggle" aria-expanded="false" onclick="toggleAddForm(event)">Expandir ▼</button>
+                            <h2 class="section-title" style="margin: 0; text-align: left; width: 100%;">Adicionar Produto</h2>
+                            <button class="collapse-toggle" aria-expanded="false" onclick="toggleAddForm(event)">+</button>
                         </div>
                         <div id="addItemContainer" style="display: none;">
                         <form class="add-item-form" onsubmit="addItem(event)">
                             <input type="text" id="itemName" class="form-input" placeholder="Nome do produto" required>
                             <input type="text" id="itemPrice" class="form-input" inputmode="decimal" placeholder="0,00" required>
                             <input type="number" id="itemQuantity" class="form-input" placeholder="Qtd" min="1" value="1" required>
-                            <select id="itemCategory" class="form-input" required>
+                            <select id="itemCategory" class="form-input gradient-select" required>
                                 <option value="">Categoria</option>
                                 <option value="frutas">🍎 Frutas</option>
                                 <option value="verduras">🥬 Verduras</option>
@@ -46,22 +51,33 @@
                                 <option value="congelados">🧊 Congelados</option>
                                 <option value="outros">📦 Outros</option>
                             </select>
-                            <button type="submit" class="btn-primary">+ Adicionar</button>
+                            <button type="submit" class="btn-primary" style="width: 100%;">+ Adicionar</button>
                         </form>
                         </div>
 
-                        <div class="categories-filter">
-                            <button class="category-btn active" onclick="filterByCategory(event, '')">Todos</button>
-                            <button class="category-btn" onclick="filterByCategory(event, 'frutas')">🍎 Frutas</button>
-                            <button class="category-btn" onclick="filterByCategory(event, 'verduras')">🥬 Verduras</button>
-                            <button class="category-btn" onclick="filterByCategory(event, 'carnes')">🥩 Carnes</button>
-                            <button class="category-btn" onclick="filterByCategory(event, 'laticínios')">🥛 Laticínios</button>
-                            <button class="category-btn" onclick="filterByCategory(event, 'padaria')">🍞 Padaria</button>
-                            <button class="category-btn" onclick="filterByCategory(event, 'limpeza')">🧽 Limpeza</button>
-                            <button class="category-btn" onclick="filterByCategory(event, 'higiene')">🧴 Higiene</button>
-                            <button class="category-btn" onclick="filterByCategory(event, 'bebidas')">🥤 Bebidas</button>
-                            <button class="category-btn" onclick="filterByCategory(event, 'congelados')">🧊 Congelados</button>
-                            <button class="category-btn" onclick="filterByCategory(event, 'outros')">📦 Outros</button>
+                        <!-- Barra de pesquisa -->
+                        <div class="search-container">
+                            <div class="search-input-wrapper">
+                                <input type="search" id="searchInput" class="search-input" placeholder="Buscar produtos..." aria-label="Buscar produtos">
+                                <button type="button" class="search-button" onclick="searchItems()" aria-label="Buscar">
+                                    <span class="search-icon">🔍</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filtro por categorias -->
+                        <div class="categories-filter" role="group" aria-label="Filtrar por categoria">
+                            <button class="category-btn gradient-btn active" onclick="filterByCategory(event, '')" aria-pressed="true">Todos</button>
+                            <button class="category-btn gradient-btn" onclick="filterByCategory(event, 'frutas')" aria-pressed="false">🍎 Frutas</button>
+                            <button class="category-btn gradient-btn" onclick="filterByCategory(event, 'verduras')" aria-pressed="false">🥬 Verduras</button>
+                            <button class="category-btn gradient-btn" onclick="filterByCategory(event, 'carnes')" aria-pressed="false">🥩 Carnes</button>
+                            <button class="category-btn gradient-btn" onclick="filterByCategory(event, 'laticínios')" aria-pressed="false">🥛 Laticínios</button>
+                            <button class="category-btn gradient-btn" onclick="filterByCategory(event, 'padaria')" aria-pressed="false">🍞 Padaria</button>
+                            <button class="category-btn gradient-btn" onclick="filterByCategory(event, 'limpeza')" aria-pressed="false">🧽 Limpeza</button>
+                            <button class="category-btn gradient-btn" onclick="filterByCategory(event, 'higiene')" aria-pressed="false">🧴 Higiene</button>
+                            <button class="category-btn gradient-btn" onclick="filterByCategory(event, 'bebidas')" aria-pressed="false">🥤 Bebidas</button>
+                            <button class="category-btn gradient-btn" onclick="filterByCategory(event, 'congelados')" aria-pressed="false">🧊 Congelados</button>
+                            <button class="category-btn gradient-btn" onclick="filterByCategory(event, 'outros')" aria-pressed="false">📦 Outros</button>
                         </div>
 
                         <div id="shoppingList" class="shopping-list">
@@ -105,7 +121,8 @@
                         </div>
 
                         <div style="margin-top: 16px; display: flex; gap: 8px;">
-                            <button class="btn-primary" onclick="clearList()">🧹 Limpar lista</button>
+                            <button class="btn-primary" onclick="clearList()" aria-label="Limpar lista">🧹 Limpar lista</button>
+                            <button class="btn-secondary" onclick="exportList()" aria-label="Exportar lista">📤 Exportar</button>
                         </div>
 
                         <div style="margin-top: 30px;">
@@ -204,12 +221,12 @@
 
     <!-- OCR libs (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/build/pdf.min.js"></script>
-    <script>
-        if (window['pdfjsLib']) {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/build/pdf.worker.min.js';
-        }
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script>
+    if (window['pdfjsLib']) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    }
+</script>
     <script type="module" src="js/app.js"></script>
 </body>
 </html>

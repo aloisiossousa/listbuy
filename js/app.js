@@ -1,6 +1,6 @@
 
    
-        // Estado da aplicação
+// Estado da aplicação
         let currentUser = null;
         let shoppingList = [];
         let currentFilter = '';
@@ -261,12 +261,79 @@
             
             document.querySelectorAll('.category-btn').forEach(btn => {
                 btn.classList.remove('active');
+                btn.setAttribute('aria-pressed', 'false');
             });
             if (evt && evt.target) {
                 evt.target.classList.add('active');
+                evt.target.setAttribute('aria-pressed', 'true');
             }
             
             updateDisplay();
+        }
+        
+        // Função de pesquisa de produtos
+        function searchItems() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            
+            if (!searchTerm) {
+                // Se a pesquisa estiver vazia, apenas mostra todos os itens
+                filterByCategory(null, currentFilter);
+                return;
+            }
+            
+            // Filtra os itens que correspondem ao termo de pesquisa
+            const filteredItems = shoppingList.filter(item => {
+                return item.name.toLowerCase().includes(searchTerm);
+            });
+            
+            // Atualiza a exibição apenas com os itens filtrados
+            renderShoppingList(filteredItems);
+            
+            // Atualiza o contador de itens visíveis
+            document.getElementById('totalItems').textContent = filteredItems.length;
+        }
+        
+        // Adiciona evento de tecla Enter para a pesquisa
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', function(event) {
+                    if (event.key === 'Enter') {
+                        searchItems();
+                    }
+                });
+            }
+        });
+        
+        // Função para exportar a lista
+        function exportList() {
+            if (shoppingList.length === 0) {
+                alert('Sua lista está vazia. Adicione produtos antes de exportar.');
+                return;
+            }
+            
+            // Cria o conteúdo CSV
+            let csvContent = 'Nome,Preço,Quantidade,Categoria,Total\n';
+            
+            shoppingList.forEach(item => {
+                const total = parseFloat(item.price) * parseInt(item.quantity);
+                csvContent += `"${item.name}",${item.price},${item.quantity},${item.category},${total.toFixed(2)}\n`;
+            });
+            
+            // Cria um blob e link para download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            
+            // Configura o link de download
+            link.setAttribute('href', url);
+            link.setAttribute('download', `lista-compras-${new Date().toISOString().slice(0,10)}.csv`);
+            link.style.display = 'none';
+            
+            // Adiciona à página, clica e remove
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         function updateDisplay() {
@@ -415,7 +482,7 @@
             container.style.display = isHidden ? 'block' : 'none';
             if (btn) {
                 btn.setAttribute('aria-expanded', String(isHidden));
-                btn.textContent = isHidden ? 'Minimizar ▲' : 'Expandir ▼';
+                btn.textContent = isHidden ? '-' : '+';
             }
         }
 
