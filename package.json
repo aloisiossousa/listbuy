@@ -4,9 +4,9 @@
   "main": "index.js",
   "scripts": {
     "test": "playwright test",
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview --port 5173",
+    "preview": "vite preview --port 5173 --host",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
