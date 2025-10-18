@@ -739,14 +739,13 @@ window.searchItems = searchItems;
                 const text = file.type === 'application/pdf' 
                     ? await extractTextFromPdf(file)
                     : await extractTextFromImage(file);
-                const productNames = parseProductNames(text);
-                if (productNames.length === 0) {
-                    showImportStatus('Não foi possível detectar nomes de produtos.', false);
+                const products = parseProducts(text);
+                if (products.length === 0) {
+                    showImportStatus('Não foi possível detectar itens.', false);
                     return;
                 }
-                const uniqueNames = Array.from(new Set(productNames));
-                openImportPreview(uniqueNames);
-                showImportStatus(`Detectados ${uniqueNames.length} itens. Revise e confirme.`, false);
+                openImportPreview(products);
+                showImportStatus(`Detectados ${products.length} itens. Revise e confirme.`, false);
             } catch (err) {
                 console.error(err);
                 alert('Falha ao importar. Tente um arquivo mais nítido ou com texto selecionável.');
@@ -761,18 +760,24 @@ window.searchItems = searchItems;
             const input = document.getElementById('importFile');
             if (!input) return;
             input.click();
-            input.onchange = function() {
+            input.onchange = async function() {
                 const nameLabel = document.getElementById('importFileName');
                 if (nameLabel) {
                     const fileName = input.files && input.files[0] ? input.files[0].name : 'Nenhum arquivo selecionado';
                     nameLabel.textContent = fileName;
+                }
+                // inicia imediatamente a importação após seleção
+                try {
+                    await importListFromFile();
+                } catch (e) {
+                    console.error('Erro ao importar arquivo selecionado:', e);
                 }
             }
         }
 
         async function extractTextFromImage(file) {
             if (!window.Tesseract) throw new Error('Tesseract não carregado');
-            const { data } = await Tesseract.recognize(file, 'por');
+            const { data } = await Tesseract.recognize(file, 'por+eng');
             return data && data.text ? data.text : '';
         }
 
@@ -783,43 +788,129 @@ window.searchItems = searchItems;
             let fullText = '';
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
-                const content = await page.getTextContent();
-                fullText += content.items.map(it => it.str).join(' ') + '\n';
+                let content = null;
+                try { content = await page.getTextContent(); } catch (_) {}
+                if (content && content.items && content.items.length) {
+                    fullText += content.items.map(it => it.str).join(' ') + '\n';
+                }
+            }
+            const normalized = fullText.replace(/\s+/g, ' ').trim();
+            if (!normalized || normalized.length < 10) {
+                const ocrText = await extractTextFromPdfViaOCR(pdf);
+                return ocrText;
             }
             return fullText;
         }
 
-        function parseProductNames(rawText) {
-            if (!rawText) return [];
-            // Normalização simples
-            let text = rawText
-                .replace(/\t/g, ' ')
-                .replace(/[\r]+/g, '\n')
-                .replace(/\u00A0/g, ' ') // nbsp
-                .trim();
-            const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
-
-            const names = [];
-            for (const line of lines) {
-                // Remove preços e quantidades comuns (ex: 2x, R$ 10,00, 1 UN, 500g)
-                const cleaned = line
-                    .replace(/\b\d+\s*[xX]\b/g, '')
-                    .replace(/R\$\s*\d+[\.,]?\d*/g, '')
-                    .replace(/\b\d+[\.,]?\d*\s*(kg|g|un|unid|ml|l)\b/gi, '')
-                    .replace(/\b(subtotal|total|troco|desconto|oferta|pagamento|cupom)\b/gi, '')
-                    .replace(/[:;,-]+$/g, '')
-                    .trim();
-                if (!cleaned) continue;
-                // Heurística: linha curta e sem muitos números aparenta ser um nome
-                const digits = cleaned.replace(/\D/g, '').length;
-                if (digits > 3) continue;
-                if (cleaned.length < 2) continue;
-                // Capitaliza básico
-                const name = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-                names.push(name);
+        async function extractTextFromPdfViaOCR(pdf) {
+            if (!window.Tesseract) throw new Error('Tesseract não carregado');
+            let text = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 2 });
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                const res = await Tesseract.recognize(canvas, 'por+eng');
+                text += (res && res.data && res.data.text ? res.data.text : '') + '\n';
             }
-            return names;
+            return text;
         }
+
+        // Heurística para dividir uma linha única em vários itens usando capitalização (revisada)
+        function splitNamesByCapital(src) {
+          const connectors = new Set(['de','da','do','das','dos','em','no','na','num','com','sem','para','por','e','ao','à','às']);
+          const adjectives = new Set(['Moída','Moida','Integral','UHT','Pó','Po','Zero','Diet','Light','Orgânico','Organico','Madura','Maduro','Fresca','Fresco','Defumada','Defumado','Picada','Picado','Cozida','Cozido']);
+          const tokens = src.split(/\s+/).filter(Boolean);
+          const chunks = [];
+          let current = [];
+          for (let token of tokens) {
+            const bare = token.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g,'');
+            const lower = bare.toLowerCase();
+            const isConnector = connectors.has(lower);
+            const isCapital = /^[A-ZÁ-Ü]/.test(bare);
+            const isAdj = adjectives.has(bare) || /^(mo[ií]da|integral|uht|madur[ao]|fresc[ao]|defumad[ao]|picad[ao]|cozid[ao]|org[aâ]nico|light|diet)$/i.test(bare);
+            if (isCapital && !isConnector && !isAdj && current.length > 0) {
+              // novo início de item
+              chunks.push(current.join(' '));
+              current = [token];
+            } else {
+              current.push(token);
+            }
+          }
+          if (current.length) chunks.push(current.join(' '));
+          return chunks;
+        }
+function parseProducts(rawText) {
+    if (!rawText) return [];
+    let text = rawText
+        .replace(/\t/g, ' ')
+        .replace(/[\r]+/g, '\n')
+        .replace(/\u00A0/g, ' ')
+        .trim();
+
+    const stopWords = /(subtotal|total|troco|desconto|oferta|pagamento|cupom|valor|preço|quantidade|item|itens|código|cod\.?|nota|fiscal|data|hora|cliente|cpf|cnpj|endereço|telefone)/i;
+    let lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+
+    // Se o OCR/PDF colapsou tudo em uma única linha, tentar dividir
+    if (lines.length === 1) {
+        const single = lines[0];
+        // 1) Delimitadores comuns
+        const byDelims = single.split(/\s*(?:;|•|·|—|–|-|\/|\||,)\s*/).map(s => s.trim()).filter(Boolean);
+        if (byDelims.length > 1) {
+            lines = byDelims;
+        } else {
+            // 2) Heurística por capitalização com conectores/adjetivos
+            const capitalCount = (single.match(/\b[A-ZÁ-Ü][A-Za-zÀ-ÖØ-öø-ÿ]+/g) || []).length;
+            if (capitalCount >= 2 && typeof splitNamesByCapital === 'function') {
+                const byCapital = splitNamesByCapital(single).map(s => s.trim()).filter(Boolean);
+                if (byCapital.length > 1) {
+                    lines = byCapital;
+                } else if (typeof splitByUppercaseBasic === 'function') {
+                    // 3) Fallback simples: quebra antes de maiúscula
+                    lines = splitByUppercaseBasic(single);
+                }
+            }
+        }
+    }
+
+    const names = [];
+
+    for (let line of lines) {
+        // remover preços, quantidades e códigos para sobrar apenas o nome
+        let cleaned = line
+            .replace(/(R\$\s*)?\d{1,3}(?:\.\d{3})*(?:,\d{2})|\d+\.\d{2}/g, ' ')
+            .replace(/\b(qtd|quantidade|qtde)\s*[:\-]?\s*\d+\b/ig, ' ')
+            .replace(/\b\d+\s*(x|un|und|unid|kg|g|ml|l)\b/ig, ' ')
+            .replace(/\b[0-9A-Z]{6,}\b/g, ' ')
+            .replace(/ {2,}/g, ' ')
+            .trim();
+        if (!cleaned) continue;
+        if (stopWords.test(cleaned.toLowerCase())) continue;
+        const alphaTokens = cleaned.split(' ').filter(t => /[A-Za-zÁ-Üá-ü]/.test(t));
+        if (alphaTokens.length === 0) continue;
+        const name = alphaTokens.join(' ');
+        if (name.length < 2 || name.length > 60) continue;
+        names.push(name);
+    }
+
+    // Fallback final: se ainda sobrou um único nome composto com várias iniciais maiúsculas, dividir
+    if (names.length === 1) {
+        const one = names[0];
+        const capitals = (one.match(/\b[A-ZÁ-Ü][A-Za-zÀ-ÖØ-öø-ÿ]+/g) || []).length;
+        if (capitals >= 2) {
+            let parts = typeof splitNamesByCapital === 'function' ? splitNamesByCapital(one) : [];
+            parts = (parts && parts.length > 1) ? parts : (typeof splitByUppercaseBasic === 'function' ? splitByUppercaseBasic(one) : [one]);
+            const uniqueParts = Array.from(new Set(parts.map(n => n.toLowerCase()))).map(lower => parts.find(n => n.toLowerCase() === lower));
+            return uniqueParts;
+        }
+    }
+
+    const unique = Array.from(new Set(names.map(n => n.toLowerCase()))).map(lower => names.find(n => n.toLowerCase() === lower));
+    return unique;
+}
 
         function showImportStatus(msg, loading) {
             const modal = document.getElementById('importPreviewModal');
@@ -833,17 +924,20 @@ window.searchItems = searchItems;
             }
         }
 
-        function openImportPreview(names) {
+        function openImportPreview(products) {
             const modal = document.getElementById('importPreviewModal');
             if (!modal) return;
             const listEl = document.getElementById('importListContainer');
             if (listEl) {
-                listEl.innerHTML = names.map((n, i) => `
-                    <label style="display:flex; align-items:center; gap:8px; padding:6px 4px;">
-                        <input type="checkbox" class="import-check" data-name="${n.replace(/"/g,'&quot;')}" checked>
-                        <input type="text" class="form-input" value="${n}" style="flex:1;">
-                    </label>
-                `).join('');
+                listEl.innerHTML = products.map((name) => {
+                    const safeName = String(name || '').replace(/[<>]/g, '').replace(/"/g, '&quot;');
+                    return `
+                        <label style="display:flex; align-items:center; gap:8px; padding:6px 4px;">
+                            <input type="checkbox" class="import-check" checked>
+                            <input type="text" class="form-input import-name" value="${safeName}" style="flex:2;" placeholder="Nome do produto">
+                        </label>
+                    `;
+                }).join('');
             }
             modal.style.display = 'flex';
         }
@@ -860,9 +954,10 @@ window.searchItems = searchItems;
             const selected = [];
             rows.forEach(row => {
                 const cb = row.querySelector('.import-check');
-                const input = row.querySelector('input[type="text"]');
-                if (cb && cb.checked && input && input.value.trim()) {
-                    selected.push(input.value.trim());
+                const nameInput = row.querySelector('.import-name');
+                if (cb && cb.checked && nameInput && nameInput.value.trim()) {
+                    const name = nameInput.value.trim();
+                    selected.push({ name });
                 }
             });
             if (selected.length === 0) {
@@ -870,15 +965,16 @@ window.searchItems = searchItems;
                 return;
             }
             const now = Date.now();
-            selected.forEach((name, idx) => {
-                shoppingList.push({
+            selected.forEach((it, idx) => {
+                const item = {
                     id: now + idx,
-                    name,
+                    name: it.name,
                     price: 0,
                     quantity: 1,
                     category: '',
-                    total: 0
-                });
+                };
+                item.total = 0;
+                shoppingList.push(item);
             });
             saveListToStorage();
             updateDisplay();
@@ -887,4 +983,8 @@ window.searchItems = searchItems;
 
         window.closeImportPreview = closeImportPreview;
         window.confirmImportSelection = confirmImportSelection;
+  
+function splitByUppercaseBasic(src) {
+  return src.split(/(?<!^)\s+(?=[A-ZÁ-Ü])/g).map(s => s.trim()).filter(Boolean);
+}
   
